@@ -1,0 +1,9 @@
+    let PrintLine(T) = (Print('\n'), Print(T))
+in  let rec FibSeries (x,y,S,N) = (
+                let z = x+y 
+            in  N >= z ->  (FibSeries(y,z,S,N), (z >= S -> PrintLine(z) | 'Skip')) | 'Done'
+        )
+
+in  let FibRange(N, S) = FibSeries(1, 1, N, S)
+in  FibRange(100, 1000)
+ 

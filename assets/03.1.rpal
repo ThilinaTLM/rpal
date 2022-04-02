@@ -1,0 +1,14 @@
+    let ReverseTuple(T) = (
+                PartialReverseTuple(T, Order T, 1) where
+                rec PartialReverseTuple(T, N, i) = N eq i -> (nil aug T(i)) | (PartialReverseTuple(T, N, i+1) aug T(i))
+            )
+in  let rec FibSeries(x,y,S,N) = (
+                let z = x+y 
+            in  N >= z -> (
+                    z >= S -> (FibSeries(y,z,S,N) aug z) | FibSeries(y,z,S,N)
+                ) | nil
+        )
+
+in  let FibRange(S,N) = S <= 1 -> ReverseTuple(FibSeries(1,1,S,N) aug 1 aug 1) | ReverseTuple(FibSeries(1,1,S,N))
+in  Print(FibRange(10,1150))
+ 

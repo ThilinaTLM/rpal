@@ -1,0 +1,2 @@
+    let rec SumCountables(N) = N eq 0 -> 0 | N + SumCountables(N-1)
+in  Print(SumCountables(1), SumCountables(2), SumCountables(3), SumCountables(4), SumCountables(5))

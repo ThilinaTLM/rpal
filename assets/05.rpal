@@ -1,0 +1,13 @@
+    let rec CountDigits(N) = N eq 0 -> 0 | 1 + CountDigits(N/10)
+in  let TrimSides(N, L) = (
+                let Pivot = 10**(L-1)     
+            in  (N - (N/Pivot)*Pivot)/10
+        )
+in  let LDigit(N, L) = (N/(10**(L-1)))
+in  let RDigit(N) = (N - (N/10)*10)
+in  let rec IsPalindrome(N) = (
+                let L = CountDigits(N)
+            in  N < 10 -> true | (LDigit(N, L) eq RDigit(N)) -> true & IsPalindrome(TrimSides(N, L)) | false
+        )
+in  let IsPalindromeText(N) = IsPalindrome(N) -> 'Palindrome' | 'Non Palindrome'
+in  Print(IsPalindromeText(123), IsPalindromeText(1212), IsPalindromeText(0), IsPalindromeText(1221), IsPalindromeText(34143))

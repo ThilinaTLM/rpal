@@ -1,0 +1,3 @@
+    let Mod(N,d) = N - (N/d)*d
+in  let EvenOdd(N) = Mod(N, 2) eq 0 -> 'Even' | 'Odd'
+in  Print(EvenOdd(12), EvenOdd(33), EvenOdd(2), EvenOdd(5))

@@ -1,0 +1,2 @@
+    let NumberSign N = N >= 0 -> N eq 0 -> 'Zero' | 'Positive' | 'Negative'
+in  Print(NumberSign(10), NumberSign(0), NumberSign(-1))

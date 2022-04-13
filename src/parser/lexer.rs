@@ -1,3 +1,11 @@
+#![warn(dead_code, unused_variables)]
+
+const OPERATOR_SYMBOLS: [char; 26] = [
+    '+', '-', '*', '<', '>', '&', '.', '@', '/', ':', '=', '~', ',', '$', '!', '#', '%', 'ˆ', '_',
+    '[', ']', '{', '}', '"', '‘', '?',
+];
+
+const PUNCTION_SYMBOLS: [char; 4] = ['(', ')', ';', ','];
 
 #[derive(Debug)]
 pub enum Token {
@@ -10,6 +18,7 @@ pub enum Token {
     Punction(char),
 }
 
+#[derive(Debug)]
 struct SourceReader {
     source: String,
     start: usize,
@@ -17,8 +26,10 @@ struct SourceReader {
 }
 
 impl SourceReader {
-
     pub fn new(source: String) -> SourceReader {
+        if source.len() == 0 {
+            panic!("Source is empty");
+        }
         SourceReader {
             source,
             start: 0,
@@ -31,7 +42,9 @@ impl SourceReader {
     }
 
     pub fn next(&mut self) {
-        self.pos += 1;
+        if self.has_more() {
+            self.pos += 1;
+        }
     }
 
     pub fn commit(&mut self) -> String {
@@ -44,31 +57,26 @@ impl SourceReader {
         self.pos = self.start;
     }
 
-    pub fn peek(&self) -> char {
-        self.source.chars().nth(self.pos).unwrap()
-    }
-
     pub fn is_char(&self, c: char) -> bool {
         self.source.chars().nth(self.pos) == Some(c)
     }
 
+    pub fn peek(&self) -> char {
+        self.source.chars().nth(self.pos).unwrap()
+    }
+
     pub fn is_letter(&self) -> bool {
-        let c = self.source.chars().nth(self.pos).unwrap();
+        let c = self.peek();
         c.is_alphabetic()
     }
 
     pub fn is_digit(&self) -> bool {
-        let c = self.source.chars().nth(self.pos).unwrap();
+        let c = self.peek();
         c.is_digit(10)
     }
 
-    pub fn is_underscore(&self) -> bool {
-        let c = self.source.chars().nth(self.pos).unwrap();
-        c == '_'
-    }
-
     pub fn is_whitespace(&self) -> bool {
-        let c = self.source.chars().nth(self.pos).unwrap();
+        let c = self.peek();
         c.is_whitespace()
     }
 
@@ -76,88 +84,123 @@ impl SourceReader {
         let c = self.source.chars().nth(self.pos).unwrap();
         c == '\n'
     }
-
-    pub fn is_operator_symbol(&self) -> bool {
-        let c = self.source.chars().nth(self.pos).unwrap();
-        c == '+' || c == '-' || c == '*' || c == '<' || c == '>' || c == '&' || c == '.' ||
-        c == '@' || c == '/' || c == ':' || c == '=' || c == '~' || c == '|' || c == '$' ||
-        c == '!' || c == '#' || c == '%' || c == '^' || c == '_' || c == '[' || c == ']' ||
-        c == '{' || c == '}' || c == '"' || c == '\'' || c == '?'
-    }
-
-    pub fn is_quote(&self) -> bool {
-        let c = self.source.chars().nth(self.pos).unwrap();
-        c == '"' || c == '\''
-    }
-
-    pub fn is_open_pran(&self) -> bool {
-        let c = self.source.chars().nth(self.pos).unwrap();
-        c == '('
-    }
-
-    pub fn is_close_pran(&self) -> bool {
-        let c = self.source.chars().nth(self.pos).unwrap();
-        c == ')'
-    }
-
-    pub fn is_semicolon(&self) -> bool {
-        let c = self.source.chars().nth(self.pos).unwrap();
-        c == ';'
-    }
-
-    pub fn is_comma(&self) -> bool {
-        let c = self.source.chars().nth(self.pos).unwrap();
-        c == ','
-    }
-
-    pub fn is_dot(&self) -> bool {
-        let c = self.source.chars().nth(self.pos).unwrap();
-        c == '.'
-    }
-
 }
 
+#[derive(Debug)]
+pub struct Lexer {
+    reader: SourceReader,
+}
 
-pub fn parse(source: String) -> Vec<Token> {
-    let mut reader = SourceReader::new(source);
-    let mut tokens = Vec::new();
-
-    while reader.has_more() {
-        if reader.is_letter() { // identifer
-            while reader.is_letter() || reader.is_digit() || reader.is_underscore() {
-                reader.next();
-            }
-            tokens.push(Token::Identifier(reader.commit()));
-        } else if reader.is_digit() { // integer
-            while reader.is_digit() {
-                reader.next();
-            } 
-            tokens.push(Token::Integer(reader.commit().parse().unwrap()));
-        } else if reader.is_whitespace() || reader.is_eol() { // spaces
-            while reader.is_whitespace() || reader.is_eol() {
-                reader.next();
-            }
-            tokens.push(Token::Spaces(reader.commit().chars().nth(0).unwrap()));
-        } else if reader.is_operator_symbol() { // operator 
-            reader.next();
-            tokens.push(Token::Operator(reader.commit()));
-        } else if reader.is_quote() { // string
-            let margin_ch = reader.peek();
-            reader.next();
-            while !reader.is_char(margin_ch) {
-                if reader.is_eol() {
-                    panic!("unterminated string literal");
-                }
-                if reader.is_char('\\') {
-                    //
-                }
-                reader.next();
-            }
-
-        } else {
-            break;
+impl Lexer {
+    pub fn new(source: String) -> Lexer {
+        Lexer {
+            reader: SourceReader::new(source),
         }
     }
-    tokens
-}
 
+    pub fn parse(&mut self) -> Vec<Token> {
+        let mut tokens: Vec<Token> = Vec::new();
+
+        macro_rules! push_token {
+            ($token:expr) => {
+                if let Some(token) = $token {
+                    tokens.push(token);
+                    continue;
+                }
+            };
+        }
+
+        while self.reader.has_more() {
+            self.reader.rollback();
+            push_token!(self.identifier());
+            push_token!(self.integer());
+            push_token!(self.operator());
+            push_token!(self.string());
+            push_token!(self.spaces());
+            push_token!(self.comment());
+            push_token!(self.punction());
+            break;
+        }
+        tokens
+    }
+
+    fn identifier(&mut self) -> Option<Token> {
+        if !self.reader.is_letter() {
+            return None;
+        }
+        while self.reader.is_letter() || self.reader.is_digit() || self.reader.is_char('_') {
+            self.reader.next();
+        }
+        Some(Token::Identifier(self.reader.commit()))
+    }
+
+    fn integer(&mut self) -> Option<Token> {
+        if !self.reader.is_digit() {
+            return None;
+        }
+        while self.reader.is_digit() {
+            self.reader.next();
+        }
+        Some(Token::Integer(self.reader.commit().parse().unwrap()))
+    }
+
+    fn operator(&mut self) -> Option<Token> {
+        if OPERATOR_SYMBOLS.contains(&self.reader.peek()) {
+            self.reader.next();
+            return Some(Token::Operator(self.reader.commit()));
+        }
+        None
+    }
+
+    fn string(&mut self) -> Option<Token> {
+        let brk = if self.reader.is_char('"') {
+            self.reader.next();
+            '"'
+        } else if self.reader.is_char('\'') {
+            self.reader.next();
+            '\''
+        } else {
+            return None;
+        };
+        while !self.reader.is_char(brk) {
+            self.reader.next();
+        }
+        Some(Token::String(self.reader.commit()))
+    }
+
+    fn spaces(&mut self) -> Option<Token> {
+        if !self.reader.is_whitespace() && !self.reader.is_eol() {
+            return None;
+        }
+        while self.reader.is_whitespace() || self.reader.is_eol() {
+            self.reader.next();
+        }
+        Some(Token::Spaces(self.reader.commit().chars().nth(0).unwrap()))
+    }
+
+    fn comment(&mut self) -> Option<Token> {
+        if !self.reader.is_char('/') {
+            return None;
+        }
+        self.reader.next();
+        if !self.reader.is_char('/') {
+            return None;
+        }
+        self.reader.next();
+
+        while !self.reader.is_eol() {
+            self.reader.next();
+        }
+        Some(Token::Comment(self.reader.commit()))
+    }
+
+    fn punction(&mut self) -> Option<Token> {
+        if PUNCTION_SYMBOLS.contains(&self.reader.peek()) {
+            self.reader.next();
+            return Some(Token::Punction(
+                self.reader.commit().chars().nth(0).unwrap(),
+            ));
+        }
+        None
+    }
+}
